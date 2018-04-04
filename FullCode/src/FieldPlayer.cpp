@@ -60,10 +60,7 @@ void FieldPlayer::startSupportGk(double distToHalfLine)
     }
 }
 
-bool FieldPlayer::startBlockEnemy()
-{
-    return false;
-}
+
 
 void FieldPlayer::startAttackerMode()
 {
@@ -108,10 +105,6 @@ void FieldPlayer::attackerMode()
                 antLeftSide = false;
                 aimVec = Vector2d(0.,0.4);
             }
-//            if ((isAtTarget()) && (enemyFieldHalf_->isInside(physics_->getBallLastPosition())))
-//            {
-//                attackerModeSM.changeState(ATTACKER_STATES::SHOOT_INIT);
-//            }
             if (changeSide || init)
             {
                 activateCA(true, true, true, true, true, true);
@@ -138,105 +131,26 @@ void FieldPlayer::defenderMode()
 {
     SUBSM_DURING(defenderModeSM)
         case DEFENDER_STATES::SUPPORT_GK:
-
-//            if (!defenseLine_.isLeftOfLine(physics_->getBallPositionFiltered()))
-//            {
-//                //Ball is behind defense line
-//                if (defenderRole_ == DEFEND_ALONE)
-//                {
-//					defenderModeSM.changeState(DEFENDER_STATES::PASS_BALL);
-//                    break;
-//                }
-//                else if (defenderRole_ == DEFEND_FRONT)
-//                {
-//                    //BLOCK ENEMY if allowed
-//                    //changeState(DEFENDER_STATES::BLOCK_ENEMY);
-//					defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
-//                    break;
-//                }
-//                else //DEFEND_BACK
-//                {
-//					defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
-//                    break;
-//                }
-//            }
-//			else if(defenderRole_ == DEFEND_ALONE &&
-//					ownFieldHalf_->isInside(physics_->getBallPositionFiltered().toPosition()) &&
-//					fabs(physics_->getBallVelocity()*physics_->getHalfwayLinePtr()->getNormalVector()) < 0.2 &&
-//                                        physics_->getClosestEnemysDistanceToBall() > 0)
-//			{
-//				defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
-//				break;
-//			}
-//            supportGk();
-
-
-        //-------------TEST GUSTAV-----------------//
             if (!defenseLine_.isLeftOfLine(physics_->getBallPositionFiltered().toPosition())){
-                defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
-                break;
+                    defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
+                    break;
             }
             else if(defenderRole_ == DEFEND_ALONE &&
-                            ownFieldHalf_->isInside(physics_->getBallPositionFiltered().toPosition()) &&
-                            fabs(physics_->getBallVelocity()*physics_->getHalfwayLinePtr()->getNormalVector()) < 0.2)
+                    ownFieldHalf_->isInside(physics_->getBallPositionFiltered().toPosition()) &&
+                    fabs(physics_->getBallVelocity()*physics_->getHalfwayLinePtr()->getNormalVector()) < 0.2)
             {
                     defenderModeSM.changeState(DEFENDER_STATES::SHOOT_ON_GOAL);
                     break;
             }
             supportGk();
-        //-------------ENDE TEST GUSTAV-----------------//
-
-        break;
-        case DEFENDER_STATES::CLEAR_BALL:
-            if (defenseLine_.isLeftOfLine(physics_->getBallPositionFiltered()))
-            {
-				defenderModeSM.changeState(DEFENDER_STATES::SUPPORT_GK);
-                break;
-            }
-
-            //clearBall();
-            shootBall();
-        break;
-        case DEFENDER_STATES::PASS_BALL:
-            if (physics_->getClosestEnemysDistanceToBall() < 0.3)
-            {
-				defenderModeSM.changeState(DEFENDER_STATES::CLEAR_BALL);
-                break;
-            }
-            if (physics_->getHalfwayLinePtr()->isLeftOfLine(physics_->getPredBallPosition(1000)))
-            {
-				defenderModeSM.changeState(DEFENDER_STATES::SUPPORT_GK);
-                break;
-            }
-
-
-            shootBall();
-            //passTo();
-            //clearBall();
         break;
         case DEFENDER_STATES::SHOOT_ON_GOAL:
-
-//            if (physics_->getClosestEnemysDistanceToBall() < 0.3)
-//            {
-//				defenderModeSM.changeState(DEFENDER_STATES::CLEAR_BALL);
-//                break;
-//            }
-//            if (physics_->getHalfwayLinePtr()->isLeftOfLine(physics_->getPredBallPosition(1000)))
-//            {
-//				defenderModeSM.changeState(DEFENDER_STATES::SUPPORT_GK);
-//                break;
-//            }
-//            shootBall();
-
-                //-------------TEST GUSTAV-----------------//
             if (enemyFieldHalf_->isInside(physics_->getBallPositionFiltered().toPosition()))
             {
-                                defenderModeSM.changeState(DEFENDER_STATES::SUPPORT_GK);
-                break;
+                                                    defenderModeSM.changeState(DEFENDER_STATES::SUPPORT_GK);
+                    break;
             }
             shootBall();
-            //-------------ENDE TEST GUSTAV-----------------//
-
         break;
     SUBSM_EXIT(defenderModeSM)
     SUBSM_ENTRY(defenderModeSM)
@@ -255,29 +169,11 @@ void FieldPlayer::defenderMode()
                 startSupportGk(0.8);
             }
         break;
-        case DEFENDER_STATES::CLEAR_BALL:
-            cout << "defender clears Ball" << endl;
-        break;
-        case DEFENDER_STATES::PASS_BALL:
-            //startPassTo(attacker_);
-            cout << "defender passes Ball" << endl;
-        break;
         case DEFENDER_STATES::SHOOT_ON_GOAL:
-            cout << "defender shoots Ball" << endl;
         break;
     SUBSM_END(defenderModeSM)
 }
 
-
-void FieldPlayer::anticipatePass()
-{
-
-}
-
-void FieldPlayer::prepareShoot()
-{
-
-}
 
 void FieldPlayer::setSide(eSide s)
 {
@@ -337,23 +233,17 @@ void FieldPlayer::supportGk()
     desiredSpeed_ = 1.5;
 }
 
-void FieldPlayer::blockEnemy()
-{
-
-}
-
 void FieldPlayer::startKickOff()
 {
-    std::cout << "Start Kickoff!" << std::endl;
     stopAllActions();
-    kickOffSM.changeState(KICKOFF_STATES::PREPARE);
+    kickOffSM.changeState(KICKOFF_STATES::PREPARE_KICKOFF);
     kickOffActive_ = true;
 }
 
 void FieldPlayer::kickOff()
 {
     SUBSM_DURING(kickOffSM)
-        case KICKOFF_STATES::PREPARE :
+        case KICKOFF_STATES::PREPARE_KICKOFF :
             if (isAtTarget())
             {
                 kickOffSM.changeState(KICKOFF_STATES::SHOOT);
@@ -364,7 +254,7 @@ void FieldPlayer::kickOff()
         break;
     SUBSM_EXIT(kickOffSM)
     SUBSM_ENTRY(kickOffSM)
-        case KICKOFF_STATES::PREPARE :
+        case KICKOFF_STATES::PREPARE_KICKOFF :
             activateCA(true, true, true, true, true, true);
             calcKickOffPreparePosition();
         break;
@@ -389,38 +279,64 @@ void FieldPlayer::calcKickOffPreparePosition()
     }
     EnemiesCenter = EnemiesCenter / physics_->getNumberOfEnemies();
 
-    Line parallelLine(lineToGoal.getMiddleVector(), enemyGoalSegment_->getDirectionVector().getAngle());
+    Line parallelLine(lineToGoal.getMiddleVector() - (lineToGoal.getDirectionVector() * 0.05), enemyGoalSegment_->getDirectionVector().getAngle());
     std::vector<Vector2d> intersections = physics_->getFieldPtr()->getIntersection(parallelLine);
 
     if (intersections.empty())
     {
         //Shoot over middle
-        kickOffPrepareTarget.Location = lineToGoal.getStartVector() - (lineToGoal.getDirectionVector() * 0.2);
+		kickOffPrepareTarget.Location = lineToGoal.getStartVector() - (lineToGoal.getDirectionVector() * 0.15);
         kickOffPrepareTarget.Heading = lineToGoal.getDirectionVector();
     }
     else if (intersections.size() == 1)
     {
         //Only one option
         LineSegment lineToWall(lineToGoal.getStartVector(), intersections.front());
-        kickOffPrepareTarget.Location = lineToWall.getStartVector() - (lineToWall.getDirectionVector() * 0.2);
+		kickOffPrepareTarget.Location = lineToWall.getStartVector() - (lineToWall.getDirectionVector() * 0.15);
         kickOffPrepareTarget.Heading = lineToWall.getDirectionVector();
+
+        TargetPoint targetForAttacker;
+        targetForAttacker.Location = (physics_->getHalfwayLinePtr()->getClosestPoint(lineToWall.getEndVector())
+                                      + physics_->getHalfwayLinePtr()->getMiddleVector()) / 2.;
+        targetForAttacker.Heading = (enemyGoalSegment_->getMiddleVector() - targetForAttacker.Location).getNormalized();
+
+        if (attacker_)
+        {
+            attacker_->setKickoffPreparationTarget(targetForAttacker);
+        }
+
     }
     else
     {
         LineSegment lineToWall;
         if (lineToGoal.isLeftOfLine(intersections.front()) != lineToGoal.isLeftOfLine(EnemiesCenter))
         {
-            lineToWall = LineSegment(lineToGoal.getStartVector(), intersections.front());
+            lineToWall = LineSegment(lineToGoal.getStartVector(), intersections.front());            
         }
         else
         {
             lineToWall = LineSegment(lineToGoal.getStartVector(), intersections.back());
         }
-        kickOffPrepareTarget.Location = lineToWall.getStartVector() - (lineToWall.getDirectionVector() * 0.2);
+
+        TargetPoint targetForAttacker;
+        targetForAttacker.Location = (physics_->getHalfwayLinePtr()->getClosestPoint(lineToWall.getEndVector())
+                                      + physics_->getHalfwayLinePtr()->getMiddleVector()) / 2.;
+        targetForAttacker.Heading = (enemyGoalSegment_->getMiddleVector() - targetForAttacker.Location).getNormalized();
+
+        if (attacker_)
+        {
+            attacker_->setKickoffPreparationTarget(targetForAttacker);
+        }
+        if (defender_)
+        {
+            defender_->setKickoffPreparationTarget(targetForAttacker);
+        }
+
+		kickOffPrepareTarget.Location = lineToWall.getStartVector() - (lineToWall.getDirectionVector() * 0.15);
         kickOffPrepareTarget.Heading = lineToWall.getDirectionVector();
     }
 
-    kickOffPrepareTarget.Precision = 0.01;
+    kickOffPrepareTarget.Precision = 0.02;
     kickOffPrepareTarget.AnglePrecision = 0.05;
 
     setTargetPoint(kickOffPrepareTarget);

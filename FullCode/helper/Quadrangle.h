@@ -43,7 +43,7 @@ public:
 
 private:
 
-    std::vector<LineSegment> segments_; /**< line segments forming quadrangle */
+	std::vector<LineSegment> segments_; /**< line segments forming quadrangle */
 };
 
 #endif // QUADRANGLE_H

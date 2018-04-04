@@ -385,10 +385,7 @@ public:
      *@brief returns current ball velocity
     */
     Vector2d getBallVelocity() const;
-    /**
-     *@brief returns simple ball trajectory
-    */
-    Line getSimpleBallTrajectory() const;
+
     /**
      *@brief returns predicted ball trajectory
      *@param milliseconds: prediction time
@@ -418,49 +415,55 @@ public:
     const double ROBOT_OBSTACLE_RADIUS = 3.5 * ROBOT_RADIUS; /**< robot radius with collision avoidance margin*/
     const double BALL_RADIUS = 0.021335; /**< physical ball radius*/
     const double BALL_OBSTACLE_RADIUS = BALL_RADIUS + 1.5 * ROBOT_RADIUS; /**< ball radius with collision avoidance margin*/
-    const double PENALTY_AREA_MARGIN = 1.1 * ROBOT_RADIUS; /**< collision avoidance margin for penalty areas*/
-    const double FIELD_MARGIN = 1.5 * ROBOT_RADIUS; /**< collision avoidance margin for field */
+    const double PENALTY_AREA_MARGIN = 1.05 * ROBOT_RADIUS; /**< collision avoidance margin for penalty areas*/
+    const double FIELD_MARGIN = 1.2 * ROBOT_RADIUS; /**< collision avoidance margin for field */
     const double CORNER_MARGIN = 1.1 * ROBOT_RADIUS; /**< collision avoidance margin for corners*/
 
-
+	/**
+	 *@brief start a prediction comparison to check prediction calculation
+	*/
     void startComparePrediction(int predictionTime);
+
+	/**
+	 *@brief stop the prediction comparison
+	*/
     void stopComparePrediction(){comparePrediction_ = false;}
 
 
 private:
 
-    QTime velTimer_;
-
+	/**
+	 *@brief calculate physics
+	*/
     void updatePhysics();
 
+	/**
+	 *@brief update moving obstacles
+	*/
     void updateObstacles();
 
-    void PredictBallTrajectory(int milliseconds);
+	Vector2d ballVelocity_; /**< ball velocity*/
 
-    Vector2d ballVelocity_;
+	std::vector<Agent* > agents_; /**< vector containing pointers to all agents*/
+	std::vector<Enemy* > enemies_; /**< vector containing pointers to all enemies*/
 
-    std::vector<Agent* > agents_;
-    std::vector<Enemy* > enemies_;
+	std::vector<Obstacle* > agentObstacles_; /**< vector containing pointers to all obstacles produced by agents*/
+	std::vector<Obstacle* > enemyObstacles_;/**< vector containing pointers to all obstacles produced by enemies*/
 
-    std::vector<Obstacle* > agentObstacles_;
-    std::vector<Obstacle* > enemyObstacles_;
-
-    Ball* ball_;
-    Obstacle* ballObstacle_;
+	Ball* ball_; /**< ball */
+	Obstacle* ballObstacle_; /**< ball obstacle*/
 
 
-    Vector2d lastBallPosition_;
-    Vector2d ballPositionFiltered_;
+	Vector2d lastBallPosition_; /**< last ball position*/
+	Vector2d ballPositionFiltered_; /**< ball position filtered*/
 
-    GameField gameField_;
+	GameField gameField_; /**< the game field*/
 
-    Trajectory ballTrajectory_;
-
-    Line simpleBallTrajectory_;
+	Trajectory ballTrajectory_; /**< the ball trajectory*/
 
 
-    bool comparePrediction_ = false;
-    std::vector<PointInfo> predictions_;
+	bool comparePrediction_ = false; /**< compare prediction for debugging*/
+	std::vector<PointInfo> predictions_; /**< vector to compare all the predictions*/
 };
 
 

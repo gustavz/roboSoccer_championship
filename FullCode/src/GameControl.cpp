@@ -3,8 +3,7 @@
 
 GameControl::GameControl(Referee* ref, Physics* physics, eTeam colorT)
     :
-      RunnableObject(REFEREE_INIT, 30000),
-      penaltySM(PENALTY_STATES::INIT, 30000)
+	  RunnableObject(REFEREE_INIT, 30000)
 {
     ref_ = ref;
     physics_ = physics;
@@ -54,7 +53,8 @@ void GameControl::run()
                 }
                 break;
             case GAMECONTROL_STATES::PENALTY :
-                penalty();
+				if(physics_->getBallVelocity().getLength() > 0.1)
+					gk_->stopAllActions();
                 break;
             case GAMECONTROL_STATES::BEFORE_KICK_OFF :
                 if (gk_->isAtTarget() && fp1_->isAtTarget() && fp2_->isAtTarget())
@@ -76,6 +76,17 @@ void GameControl::run()
             case GAMECONTROL_STATES::ATTACKER_MODE:
             break;
         SM_EXIT
+			case GAMECONTROL_STATES::BEFORE_PENALTY :
+				isPenalty_ = false;
+				break;
+			case GAMECONTROL_STATES::PENALTY :
+				isPenalty_ = false;
+				break;
+			case GAMECONTROL_STATES::BEFORE_KICK_OFF :
+				gk_->deactivateCA();
+				fp1_->deactivateCA();
+				fp2_->deactivateCA();
+				break;
         SM_ENTRY
             case GAMECONTROL_STATES::ATTACKER_MODE:
                 cout << "fp2 attacker Mode" << endl;
@@ -88,9 +99,6 @@ void GameControl::run()
             case GAMECONTROL_STATES::DEBUG_SHOOT:
                 fp2_->startShootBall();
             break;
-            case GAMECONTROL_STATES::DEBUG_PASSTO:
-                fp1_->startPassTo(fp2_);
-            break;
             case GAMECONTROL_STATES::REFEREE_INIT :
                 gk_->setSide(ourSide_);
                 fp1_->setSide(ourSide_);
@@ -98,17 +106,26 @@ void GameControl::run()
                 cout << "Referee Init  " << endl;
                 break;
             case GAMECONTROL_STATES::BEFORE_PENALTY :
+				isPenalty_ = true;
                 cout << "GAMECONTROL_STATES::BEFORE_PENALTY" << endl;
                 beforePenalty();
                 break;
             case GAMECONTROL_STATES::PENALTY :
+				isPenalty_ = true;
+                                if ( (ourTeam_ == BLUE_TEAM && ourSide_ == LEFT_SIDE) || (ourTeam_ == RED_TEAM && ourSide_ == LEFT_SIDE))
+                                {
+                                    gk_->startPenaltyMode();
+                                }
                 cout << "GAMECONTROL_STATES::PENALTY" << endl;
-                penaltySM.changeState(PENALTY_STATES::INIT);
+//                penaltySM.changeState(PENALTY_STATES::INIT);
                 break;
             case GAMECONTROL_STATES::BEFORE_KICK_OFF :
                 gk_->stopGoalKeeper();
                 fp1_->stopAllActions();
                 fp2_->stopAllActions();
+				gk_->activateCA(true, true , true, true, true, true);
+				fp1_->activateCA(true, true , true, true, true, true);
+				fp2_->activateCA(true, true , true, true, true, true);
                 beforeKickOff();
                 cout << "GAMECONTROL_STATES::BEFORE_KICK_OFF" << endl;
                 break;
@@ -133,11 +150,6 @@ void GameControl::run()
                 //gk_->activateCA();
                 //cout << "debugCruise" << endl;
                 break;
-            case GAMECONTROL_STATES::DEBUG_INTERCEPT :
-                fp1_->setSide(RIGHT_SIDE);
-                fp1_->activate();
-                fp1_->startClearBall();
-                break;
 
         SM_END
         usleep(getSleepTime());
@@ -155,7 +167,8 @@ bool GameControl::updateRef()
         ourSide_ = (ref_->GetBlueSide() == LEFT_SIDE) ? (RIGHT_SIDE) : (LEFT_SIDE);
     }
     playmode_ = ref_->GetPlayMode();
-    gk_->setSide(ourSide_);
+	if(!isPenalty_)
+		gk_->setSide(ourSide_);
     fp1_->setSide(ourSide_);
     fp2_->setSide(ourSide_);
     return playmode_ != currentState_;
@@ -171,7 +184,7 @@ void GameControl::chooseStrategy()
 {
     if (ourSide_ == LEFT_SIDE)
     {
-        if (ref_->GetLeftSideGoals() >= ref_->GetRightSideGoals()+4)
+        if (ref_->GetLeftSideGoals() >= ref_->GetRightSideGoals()+8)
         {
             strategy_ = STRATEGIES::DEFENSIVE;
         }
@@ -182,7 +195,7 @@ void GameControl::chooseStrategy()
     }
     else
     {
-        if (ref_->GetRightSideGoals() >= ref_->GetLeftSideGoals()+4)
+        if (ref_->GetRightSideGoals() >= ref_->GetLeftSideGoals()+8)
         {
             strategy_ = STRATEGIES::DEFENSIVE;
         }
@@ -221,7 +234,7 @@ void GameControl::playOn()
 
 void GameControl::beforePenalty()
 {
-    penaltyTeamShoot_ = ref_->GetSide();
+//    penaltyTeamShoot_ = ref_->GetSide();
     // Koordinaten der linken Seite.
     Position startPositionKicker(0, 0);
     Position startPositionFp1(1, 0);
@@ -231,17 +244,20 @@ void GameControl::beforePenalty()
     // Fahre beide Fieldplayer aus dem Weg.
     fp1_->setTargetPoint( TargetPoint(startPositionFp1) );
     fp2_->setTargetPoint( TargetPoint(startPositionFp2) );
-	penaltySM.changeState(PENALTY_STATES::INIT);
-    if (penaltyTeamShoot_ == ourSide_)
+
+	if ( (ourTeam_ == BLUE_TEAM && ourSide_ == LEFT_SIDE) || (ourTeam_ == RED_TEAM && ourSide_ == LEFT_SIDE))
     {
+
         //Wir gehen auf Startposition für schuss und fahren die Roboter aus dem Weg.
         //gk_->setState(GoalKeeper::PENALTY);
         gk_->stopAllActions();
+		gk_->stopGoalKeeper();
+		gk_->setSide(RIGHT_SIDE);
         gk_->activate();
         gk_->setTargetPoint( TargetPoint(startPositionKicker));
 
     }
-    else if (penaltyTeamShoot_ != ourSide_)
+	else /*if (penaltyTeamShoot_ != ourSide_)*/
     {
         gk_->startGoalKeeper();
         gk_->setSide(LEFT_SIDE);
@@ -249,75 +265,12 @@ void GameControl::beforePenalty()
     }
 }
 
-TargetPoint GameControl::prepareShoot(Position ball, Position target, double distToBall = 0.1)
-{
-    LineSegment seg(ball,target);
-
-    TargetPoint result;
-    result.Heading = seg.getDirectionVector();
-    result.Location = (seg.getStartVector() - seg.getDirectionVector() * distToBall).toPosition();
-
-    return result;
-
-}
-
-void GameControl::penalty()
-{
-    Agent* penaltyPlayer = gk_;
-
-    penaltyPlayer->setDesiredSpeed(0.5);
-
-    SUBSM_DURING(penaltySM)
-        case PENALTY_STATES::INIT:
-			if (penaltyTeamShoot_ == ourSide_)
-			{
-				penaltySM.changeState(PENALTY_STATES::PREPARE_KICK);
-			}
-			else
-			{
-				penaltySM.changeState(PENALTY_STATES::PASSIVE);
-			}
-            break;
-        case PENALTY_STATES::PREPARE_KICK:
-            if (penaltyPlayer->isAtTarget())
-            {
-				penaltySM.changeState(PENALTY_STATES::KICK);
-                break;
-            }
-            break;
-
-        case PENALTY_STATES::KICK:
-			penaltyPlayer->shoot();
-            penaltySM.changeState(PENALTY_STATES::END);
-            break;
-        case PENALTY_STATES::END:
-            break;
-
-    SUBSM_EXIT(penaltySM)
-    SUBSM_ENTRY(penaltySM)
-        case PENALTY_STATES::INIT:
-            penaltyPlayer->activate();
-			cout << "PENALTY_STATES::INIT" << endl;
-            break;
-        case PENALTY_STATES::PREPARE_KICK:
-            penaltyPlayer->setDesiredSpeed(0.3);
-			penaltyPlayer->setTargetPoint(prepareShoot(physics_->getBallLastPosition(), physics_->getGoalLeftPtr()->getMiddlePoint(), 0.15));
-			cout << "PENALTY_STATES::PREPARE_KICK" << endl;
-			break;
-		case PENALTY_STATES::KICK:
-			cout << "PENALTY_STATES::KICK" << endl;
-			break;
-
-    SUBSM_END(penaltySM)
-
-}
-
 void GameControl::beforeKickOff()
 {
 
     Position leftAttack0(-1.2, 0); //goalie
     Position leftAttack1(-0.2, 0); //kickoff
-    Position leftAttack2(-0.1, 0.6); //support
+    Position leftAttack2(-0.4, 0); //support
 
     Position leftDefend0(-1.2, 0);
     Position leftDefend1(-0.25, 0.1);
@@ -325,7 +278,7 @@ void GameControl::beforeKickOff()
 
     Position rightAttack0(1.2, 0); //goalie
     Position rightAttack1(0.2, 0); //kickoff
-    Position rightAttack2(0.1, 0.6); //support
+    Position rightAttack2(0.4, 0); //support
 
     Position rightDefend0(1.2, 0);
     Position rightDefend1(0.25, 0.1);
@@ -340,14 +293,14 @@ void GameControl::beforeKickOff()
         if (ourSide_ == LEFT_SIDE)
         {
             gk_->setTargetPoint(leftAttack0);
-            fp1_->setTargetPoint(leftAttack1);
-            fp2_->setTargetPoint(leftAttack2);
+            fp1_->setTargetPoint(leftAttack2);
+            fp2_->setTargetPoint(leftAttack1);
         }
         else
         {
             gk_->setTargetPoint(rightAttack0);
-            fp1_->setTargetPoint(rightAttack1);
-            fp2_->setTargetPoint(rightAttack2);
+            fp1_->setTargetPoint(rightAttack2);
+            fp2_->setTargetPoint(rightAttack1);
         }
     }
     else
@@ -373,16 +326,28 @@ void GameControl::kickOff()
 
     if (ourSide_ == kickOffSide)
     {
-          fp1_->startKickOff();
+        if (strategy_ == STRATEGIES::OFFENSIVE)
+        {
+
+            fp1_->setDefender(fp2_);
+            fp2_->setAttacker(fp1_);
+            gk_->setFirstDefender(fp2_);
+            gk_->setAttacker(fp1_);
+        }
+        else
+        {
+
+            fp1_->setDefender(fp2_);
+            fp2_->setDefender(fp1_);
+            gk_->setFirstDefender(fp2_);
+            gk_->setSecondDefender(fp1_);
+        }
+
+        fp1_->activateCA(true,true,true,true,true,true);
+        fp2_->startKickOff();
     }
-}
 
-
-
-Position GameControl::getInterceptionParallelTarget(int leftOfBall) const
-{
-    Vector2d predBallPos(physics_->getPredBallPosition(1000));
-    return (predBallPos - physics_->getSimpleBallTrajectory().getNormalVector() * leftOfBall * physics_->ROBOT_OBSTACLE_RADIUS).toPosition();
+    gk_->startGoalKeeper();
 }
 
 

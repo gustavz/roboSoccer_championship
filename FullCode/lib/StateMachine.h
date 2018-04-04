@@ -2,6 +2,9 @@
 #define STATEMACHINE_H
 
 
+/**
+  *@brief Macros to help with the usage of StateMachines
+  */
 #define SM_DURING   if (!stateChangeFlag_)\
                     {\
                     incTimer();\
@@ -28,6 +31,9 @@
                     lastState_ = currentState_;
 
 
+/**
+  *@brief Macros to help with the usage of subStatemachines
+  */
 #define SUBSM_DURING(a) if (!a.stateChangeFlag_)\
                         {\
                         a.incTimer();\
@@ -58,7 +64,10 @@ class StateMachine
 
 public:
 
-    StateMachine(int initState, int interval)
+	/**
+	  *@brief Constructor for StateMachine
+	  */
+	StateMachine(int initState, int interval)
         :
           currentState_(initState),
           lastState_(initState),
@@ -66,28 +75,37 @@ public:
           interval_(interval)
     {}
 
-    int getState(){return currentState_;}
+	/**
+	  *@brief get the current state of the StateMachine
+	  */
+	int getState(){return currentState_;}
 
-    void changeState(int newState){currentState_ = newState; stateChangeFlag_ = true; timer_ = 0;}
+	/**
+	  *@brief change the state of the StateMachine setting the state change flag and resetting the timer
+	  */
+	void changeState(int newState){currentState_ = newState; stateChangeFlag_ = true; timer_ = 0;}
 
-    //RISKY!!! But Usefull
-    void changeToNextState(){currentState_++; stateChangeFlag_ = true; timer_ = 0;}
+	/**
+	  *@brief returns true if there was no state change in time_in_micros
+	  */
+	bool after(int time_in_micros){return (time_in_micros <= timer_);}
 
-    bool after(int time_in_micros){return (time_in_micros <= timer_);}
+	/**
+	  *@brief increment timer
+	  */
+	void incTimer(){timer_ += interval_;}
 
-    void incTimer(){timer_ += interval_;}
+	int currentState_; /**< current state of the StateMachine*/
 
-    int currentState_;
+	int lastState_; /**< last state of the StateMachine*/
 
-    int lastState_;
-
-    bool stateChangeFlag_;
+	bool stateChangeFlag_; /**< State change flag being set to true for one period*/
 
 protected:
 
-    int interval_; //Microseconds
+	int interval_; /**< Statemachine interval */
 
-    int timer_;
+	int timer_; /**< timer counting intervals*/
 };
 
 #endif // STATEMACHINE_H

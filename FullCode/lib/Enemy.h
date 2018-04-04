@@ -25,12 +25,16 @@ class Enemy : public RoboControl
      */
     ~Enemy() {}
 
+	/**
+	  *@brief calculate distance to ball
+	  */
     double getDistToBall();
 
 
 private:
 
-    Physics* physics_;
+
+	Physics* physics_;/**< a physics instance*/
 
 };
 

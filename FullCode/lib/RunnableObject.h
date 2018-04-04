@@ -15,7 +15,9 @@ public:
         RUN = 0,
         STOP = 1
     };
-
+	/**
+	 * @brief Constructor for the runnable object
+	 */
     RunnableObject(int initState, int interval)
         :
           StateMachine(initState, interval),
@@ -25,10 +27,19 @@ public:
         timer_.start();
     }
 
+	/**
+	 * @brief run
+	 */
     virtual void run() = 0;
 
+	/**
+	 * @brief stop run
+	 */
     void stop(){status_ = STOP;}
 
+	/**
+	 * @brief calculate sleep time depending on calculation time
+	 */
     int getSleepTime()
     {
 
@@ -46,6 +57,9 @@ public:
         return interval_ - ellapsedMicroSecs;
     }
 
+	/**
+	 * @brief restart timer_
+	 */
     void restartTimer()
     {
         timer_.restart();
@@ -54,13 +68,13 @@ public:
 
 protected:
 
-    QTime timer_;
+	QTime timer_; /**< timer to time*/
 
-    RunStatus status_;
+	RunStatus status_; /**< status of the runnable object*/
 
-    time_t lastSchedule_;
+	time_t lastSchedule_; /**< time of last schedule*/
 
-    bool noWarning_ = false;
+	bool noWarning_ = false; /**< remove warning for one execution of run()*/
 };
 
 #endif // RUNNABLEOBJECT_H

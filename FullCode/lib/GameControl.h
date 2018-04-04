@@ -6,19 +6,6 @@
 #include "GoalKeeper.h"
 #include "FieldPlayer.h"
 #include "thread"
-//#include "Debug.h"
-
-namespace PENALTY_STATES
-{
-enum PenaltyStates
-{
-    INIT,
-    PREPARE_KICK,
-    KICK,
-    PASSIVE,
-    END
-};
-}
 
 namespace GAMECONTROL_STATES
 {
@@ -47,19 +34,6 @@ enum Strategies
 {
     OFFENSIVE,
     DEFENSIVE
-};
-}
-
-namespace TACTIC_STATES
-{
-enum TacticStates
-{
-    INIT,
-    OFFENSE_ENEMY_SIDE,
-    OFFENSE_OUR_SIDE,
-    DEFENSE_ENEMY_SIDE,
-    DEFENSE_OUR_SIDE
-
 };
 }
 
@@ -104,7 +78,7 @@ public:
     void setPermanentStrategy(STRATEGIES::Strategies strategy);
 
     friend class Debug; /**< allows Debug to access private fields of GameControl */
-    friend class MainWindow;
+
 private:
 
 
@@ -112,8 +86,6 @@ private:
      *@brief updates referee information and indicates if game state has changed
      */
     bool updateRef();
-
-    TargetPoint prepareShoot(Position ball, Position target, double distToBall);
 
     //========PLAY_ON====================
     bool autoStrategy_ = true; /**< automatically updated strategy active */
@@ -129,21 +101,11 @@ private:
      */
     void playOn();
 
-
-    //========PENALTY====================
-
-
-    StateMachine penaltySM; /**< penalty state machine*/
-
     /**
      *@brief prepares for the penalty
      */
     void beforePenalty();
 
-    /**
-     *@brief performs the penalty
-     */
-    void penalty();
 
     //========KICKOFF====================
     /**
@@ -156,19 +118,15 @@ private:
      */
     void kickOff();
 
-    //=============NOCH NOTWENDIG?========
-    Position getInterceptionParallelTarget(int leftOfBall) const;
-
-
     Referee* ref_;      /**< pointer to referee */
     Physics* physics_;  /**< pointer to physics */
     int playmode_;      /**< state of play mode */
     int lastPlaymode_;  /**< last state of play mode */
     eSide kickoff_;     /**< kickoff side */
     eSide ourSide_;     /**< our side */
-    eSide kickOffSide_; /**< */
+	eSide kickOffSide_; /**< side of kick of team*/
 
-    eSide penaltyTeamShoot_;
+	eSide penaltyTeamShoot_; /**< penalty shooting team */
 
     eTeam ourTeam_;     /**< our team */
     GoalKeeper* gk_;    /**< our goalkeeper */
@@ -178,18 +136,9 @@ private:
     bool debugActive_ = false;      /**< status if debug mode is active */
     double debugCruiseSpeed_ = 1.;  /**< cruise speed in debug mode */
 
+	bool isPenalty_ = false; /**< if penalty mode is active */
 
-    Position ca1_1;
-    Position ca1_2;
-    Position ca1_3;
-    Position ca1_4;
-
-    bool measuringActive_ = false;
-
-
-
-
-//    thread t1(&gk_::start, gk_);
+	bool measuringActive_ = false; /**< if debug wants measuring */
 
 };
 

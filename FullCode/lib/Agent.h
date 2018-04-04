@@ -32,9 +32,8 @@ namespace CLEARBALL_STATES
 enum ClearBallStates
 {
     INIT,
-    IS_IN_BALL_DIRECTION,
-    IS_NOT_IN_BALL_DIRECTION,
     STOP_BALL,
+	NEAR_GOAL,
     CLEAR,
     END
 };
@@ -129,32 +128,69 @@ public:
     void turn(const Vector2d& dir, bool precise = false);
     bool getDriveBackwards() { return driveBackwards; }
 
-    virtual void setSide(eSide s) = 0;
+	/**
+	 *@brief set side of team
+	 */
+	virtual void setSide(eSide s) = 0;
 
     /**
      *@brief sets a TargetPoint
      */
     void setTargetPoint(const TargetPoint& tp);
+    /**
+     *@brief sets a TargetPoint
+     */
     void setTargetPoint(const Position& tp);
+    /**
+     *@brief set TargetPoints
+     */
     void setTargetPoints(const std::vector<TargetPoint>& tp);
+    /**
+     *@brief set TargetPoints
+     */
     void setTargetPoints(const std::vector<Position>& tp);
+    /**
+     *@brief adds a TargetPoint
+     */
     void addTargetPoint(const TargetPoint& tp);
     /**
      *@brief adds a TargetPoint
      */
     void addTargetPoint(const Position& tp);    
+    /**
+     *@brief adds TargetPoints
+     */
     void addTargetPoints(const std::vector<TargetPoint>& tp);    
+    /**
+     *@brief adds TargetPoints
+     */
     void addTargetPoints(const std::vector<Position>& tp);
+    /**
+     *@brief delete all TargetPoints
+     */
     void deleteTargetPoints(){ targetPoints_.clear();}
 
+    /**
+     *@brief To check if robot has reached his TargetPoint.
+     *@return bool: true: Robot has reached his final position, false: robot is still driving
+     */
     bool isAtTarget() const;
 
-    const double ROBOT_RADIUS = 0.047;
+	const double ROBOT_RADIUS = 0.047; /**< robot radius */
 
+    /**
+     *@brief Activates the drive function of the robot.
+     */
     void activate(){ active_ = true; }
+    /**
+     *@brief Deactivates the drive function of the robot.
+     */
     void deactivate(){ active_ = false; }
 
     //====stopBall=====//
+    /**
+     *@brief Robot stops the ball.
+     */
     void startStopBall();
 
     //====clearBall=====//
@@ -164,8 +200,14 @@ public:
      */
     void startClearBall();
 
+    /**
+     *@brief Starts shooting the ball in goal direction.
+     */
     void startShootBall();
 
+    /**
+     *@brief Stop all actions of the robot.
+     */
     void stopAllActions();
 
     /**
@@ -173,74 +215,69 @@ public:
      *@param agent: name of agent the ball shall be passed to
      */
     void startPassTo(Agent* agent);
+    /**
+     *@brief calculate a Ball to target line
+     *@param target: Position to which you want to shoot
+     */
     Line getBallTargetLine(Position target);
 
+    /**
+     *@brief sets a new drive speed
+     *@param speed: speed with which the robot should drive
+     */
     void setDesiredSpeed(double speed) {desiredSpeed_ = speed;}
 
+    /**
+     *@brief get the filtered position
+     *@return filtered position of the robot
+     */
     Vector2d getPositionFiltered() {return position_;}
 
-
-	/**
-	 *@brief Shoot the ball in right direction
-	 */
-	void shoot();
+    /**
+     *@brief Shoot the ball in right direction
+     */
+    void shoot();
 
     friend class Debug;
 protected:
-    Vector2d calcRelativePosition(double x, double distance_left_or_right, eSide left_or_right);
-    LineSegment calcPositionBeforeBall(Position ball, Position target, double distToBall = 0.1);
 
+
+
+
+	/**
+	 *@brief calculate shoot position depending on ball, target and distance to ball
+	 */
     TargetPoint calcShootPosition(Position ball, Position target, double distToBall = 0.1, bool brake = false);
 
-    Timestamp lastPositionTimestamp_;
+	Timestamp lastPositionTimestamp_;/**< time stamp of last position measurement */
 
-    QTime timerAgent_;
-    QTime timerUpdate_;
-    double kp_ = 0.4;
-    double ki_ = 0.02;
-    double kd_ = 0.02;
-    double lastError = 0;
-    double speedIntegrated_ = 0;
-    double lastSpeed_ = 0;
+	QTime timerAgent_;/**< timeer for agent update */
+	QTime timerUpdate_;/**< time update */
+	double kp_ = 0.4;/**< proportional gain */
+	double ki_ = 0.02;/**< integral gain */
+	double kd_ = 0.02;/**< differential gain */
+	double lastError = 0; /**< last deviation */
+	double speedIntegrated_ = 0; /**< integrator counter */
+	double lastSpeed_ = 0; /**< last speed of the robot */
 
-    boost::mutex targetPointMutex_;
+	boost::mutex targetPointMutex_; /**< Mutex to lock targetPoints vector */
 
-    Vector2d heading_;
+	Vector2d heading_; /**< heading of the robot */
 
-    Vector2d lastPosition_;
-    double robotSpeed_ = 0;
+	Vector2d lastPosition_; /**< last robot position */
+	double robotSpeed_ = 0; /**< current robot speed */
 
-    double desiredSpeed_ = 0.4;
-    bool driveBackwards;
-    bool active_;
+	double desiredSpeed_ = 0.4; /**< desired robot speed */
+	bool driveBackwards; /**< robot is driving backwards */
+	bool active_; /**< robot cruise is active */
 
-    eSide ourSide_;
+	eSide ourSide_; /**< our side */
 
-    bool useCA_ = true;
-
-    //====stopBall=====//
-    StateMachine stopBallSM;
-    /**
-     *@brief If the roboter is behind the ball: Roboter overtakes the ball with collision avoidence. After that the roboter stops in front of the ball.
-             Otherwise: Roboter drives to ball position and stops.
-     */
-    void stopBall();
-    /**
-     *@brief Calculates the scalar product of ball-direction-vector and roboter to ball vector.
-      @param val:Value for the decision logic it represents the angle.
-      @return True if scalar-product-value < val
-     */
-    bool isBeforBall(double val);
-
-    //====clearBall=====//
-    StateMachine clearBallSM;
-    void clearBall();
+	bool useCA_ = true; /**< use collision avoidance in general */
 
 
-    //====Play the Ball=====//
-    StateMachine shootBallSM;
-    StateMachine passToSM;
-    Agent* passToAgent_;
+	//====Play the Ball=====//
+	StateMachine shootBallSM;
 
     /**
      *@brief moves behind ball and shoots it at the enemy goal
@@ -251,23 +288,8 @@ protected:
       @param val: Distance he should be behind the ball
     */
     bool isBehindBall(double val = 0);
-    /**
-     *@brief checks if the robot is in a triangle pointing to the goal behind the ball
-    */
-    bool isGoodBehindBall();
-    /**
-     *@brief calculates the time the robot needs to get to the ball
-    */
-    double timeToBall();
-    /**
-     *@brief creates a Line through the enemy goal middlepoint and the ball position
-    */
-    Line getBallGoalLine();
-    /**
-     *@brief moves behind the ball and passes it to a friendly fieldplayer
-    */
-    void passTo();
-    /**
+
+	/**
      *@brief changes the targetpoint if it is in the enemypenaltyZone
     */
     void avoidPenaltyZone(TargetPoint* target);
@@ -277,27 +299,24 @@ protected:
     //====Playing Modes====//
     bool attackerModeActive_ = false;       /**< status Atacker Mode */
     bool defenderModeActive_ = false;       /**< status Defender Mode */
-    bool supportGkActive_ = false;          /**< status support goalkeeper */
     bool shootBallActive_ = false;          /**< status shootBall */
-    bool clearBallActive_ = false;          /**< status clearBall */
-    bool stopBallActive_ = false;           /**< status stopBall */
-    bool passToActive_ = false;             /**< status passTo */
     bool kickOffActive_ = false;            /**< status kickOff */
+	bool penaltyModeActive_ = false;		/**< status penalty */
 
-    // relative Field
-    Quadrangle* ownCornerBottomLeft_;
-    Quadrangle* ownCornerBottomRight_;
-    LineSegment* ownGoalSegment_;
-    Quadrangle* ownPenaltyZone_;
-    Quadrangle* ownFieldHalf_;
+	Quadrangle* ownCornerBottomLeft_; /**< Pointer to own corner bottomleft */
+	Quadrangle* ownCornerBottomRight_; /**< pointer to own corner bottomright */
+	LineSegment* ownGoalSegment_; /**< Pointer to own goal segment */
+	Quadrangle* ownPenaltyZone_; /**< Pointer to own penalty zone*/
+	Quadrangle* ownFieldHalf_; /**< Pointer to own field half*/
 
-    LineSegment* enemyGoalSegment_;
-    Quadrangle* enemyPenaltyZone_;
-    Quadrangle* enemyFieldHalf_;
+	LineSegment* enemyGoalSegment_; /**< Pointer to enemy goal segment */
+	Quadrangle* enemyPenaltyZone_; /**< Pointer to enemy penalty zone */
+	Quadrangle* enemyFieldHalf_; /**< Pointer to enemy field half*/
 
-    // Aus Sicht von den PCs auf das Spielfeld.
-    Quadrangle* leftSide_;
-    Quadrangle* rightSide_;
+
+	Quadrangle* leftSide_; /**< Pointer to lower half of the game field */
+	Quadrangle* rightSide_; /**< Pointer to upper half of the game field */
+
 
 
 };

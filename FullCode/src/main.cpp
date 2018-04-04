@@ -65,7 +65,8 @@ int main(int argc, char *argv[]) {
 
                 string teamColor = "b";
                 std::cout << "Blue or Red? (b / r)" << std::endl;
-				std::cin >> teamColor;
+                                std::cin >> teamColor;
+//				teamColor = "b";
 
                 if(teamColor == "b"){
                     idOffset = 0;
@@ -104,7 +105,8 @@ int main(int argc, char *argv[]) {
 
                 string gameStrategy;
                 std::cout << "Game strategy: offensive, defensive or auto? (o / d / a)" << std::endl;
-				std::cin >> gameStrategy;
+//                                std::cin >> gameStrategy;
+
                 if(gameStrategy == "o"){
                         permanentStrategy = STRATEGIES::OFFENSIVE;
                         autoStrategy = false;

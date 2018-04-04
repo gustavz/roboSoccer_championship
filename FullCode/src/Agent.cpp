@@ -15,11 +15,7 @@ Agent::Agent(RTDBConn& DBC, const int deviceNr, Physics* physics, int initState,
       RunnableObject(initState,interval),
       desiredSpeed_(0.5),
       active_(true),
-      stopBallSM(STOPBALL_STATES::INIT, 30000),
-      clearBallSM(CLEARBALL_STATES::INIT, 30000),
-      shootBallSM(SHOOTBALL_STATES::INIT,30000),
-      passToSM(PASSTO_STATES::INIT, 30000)
-
+	  shootBallSM(SHOOTBALL_STATES::INIT,30000)
 {
    timerAgent_.start();
    timerUpdate_.start();
@@ -115,12 +111,31 @@ void Agent::cruise()
     double distToFinalGoal = finalGoalSeg.getLength();
     double distance = goalSeg.getLength();
     double angleDiff = heading_.getAngle(goalSeg.getDirectionVector());
-    driveBackwards = false;
-    if (fabs(angleDiff) > M_PI/2)
+
+    // Drive Backwards - 120ms decision delay
+    static int driveBackwardsCount = 0;
+    if (driveBackwardsCount > 0)
     {
-        driveBackwards = true;
+        driveBackwardsCount -= 1;
+    }
+    if  (driveBackwardsCount <= 0)
+    {
+        if (fabs(angleDiff) > M_PI/2)
+        {
+            driveBackwardsCount = 4;
+            driveBackwards = true;
+        }
+        else
+        {
+            driveBackwardsCount = 4;
+            driveBackwards = false;
+        }
+    }
+
+    if (driveBackwards == true) {
         angleDiff = angleDiff - sign(angleDiff) * M_PI ;
     }
+
 
     //PID Controller for speed
     double speedDifference = desiredSpeed_ - robotSpeed_;
@@ -172,7 +187,7 @@ void Agent::cruise()
         if ((distToFinalGoal < BRAKE_DISTANCE) && (targetPoints_.front().Brake == true))
         {
             speedIntegrated_ = 0;
-			velForward = 45 + round(distance * 80 * desiredSpeed_);
+            velForward = 45 + round(distance * 80 * desiredSpeed_);
             timeMotor = 50;
         }
         else
@@ -240,12 +255,12 @@ bool Agent::turn(const Vector2d& dir, double precision)
 
 void Agent::turn(const Vector2d& dir, bool precise)
 {
-    const double P_ANGLE = (precise) ? 0.7 : 1.;
+    const double P_ANGLE = (precise) ? 0.7 : 0.8;
 
     double angleDiff = heading_.getAngle(dir);
-    int timeToTurn = precise ? fabs(rad2deg(angleDiff) * 4) : fabs(rad2deg(angleDiff) * 6);
+    int timeToTurn = precise ? fabs(rad2deg(angleDiff) * 4) : fabs(rad2deg(angleDiff) * 5);
 
-	constraint(timeToTurn, 10, 45);
+    constraint(timeToTurn, 20, 45);
 
     if (fabs(angleDiff) > M_PI/2)
     {
@@ -302,212 +317,14 @@ void Agent::setTargetPoints(const std::vector<TargetPoint>& tp)
     targetPoints_ = tp;
 }
 
-bool Agent::isBeforBall(double val)
-{
-    static bool isInFront;
-
-    double scalarRoboBall =  physics_->getSimpleBallTrajectory().getDirectionVector().getNormalized()* (    Vector2d(physics_->getBall()->GetPos())-position_ ).getNormalized();
-
-
-    if(scalarRoboBall > val){//if true then robo is behind the ball
-        isInFront = false;
-    }else{
-        isInFront = true;
-    }
-    return isInFront;
-}
-void Agent::startStopBall(){
-	if(stopBallActive_)
-		stopBallSM.changeState(STOPBALL_STATES::INIT);
-	stopBallActive_ = true;
-}
-
-void Agent::stopBall()
-{
-	SUBSM_DURING(stopBallSM)
-		case STOPBALL_STATES::INIT :
-            if(physics_->getBallVelocity().getLength() < 0.15){
-				stopBallSM.changeState(STOPBALL_STATES::NOT_MOVING_BALL);
-			}else{
-			if(isBehindBall(0.25)){
-					stopBallSM.changeState(STOPBALL_STATES::BEFORE_BALL);
-				}else{
-					stopBallSM.changeState(STOPBALL_STATES::OVERTAKE_BALL);
-				}
-			}
-			break;
-		case STOPBALL_STATES::NOT_MOVING_BALL :
-            if(physics_->getBallVelocity().getLength() > 0.15 || isAtTarget()){
-                stopBallSM.changeState(STOPBALL_STATES::END);
-            }
-            break;
-        case STOPBALL_STATES::OVERTAKE_BALL :
-			if(isBehindBall(0.25)){
-                stopBallSM.changeState(STOPBALL_STATES::BEFORE_BALL);
-			}else{
-				TargetPoint inBallDirection(physics_->getPredBallPosition(1000) , 0.05, true);
-				setTargetPoint(inBallDirection);
-            }
-            break;
-        case STOPBALL_STATES::BEFORE_BALL :
-                if(physics_->getSimpleBallTrajectory().getDistance(position_) > 0.05){
-                    TargetPoint nearestPoint(physics_->getSimpleBallTrajectory().getClosestPoint(position_), 0.05);
-                    if(physics_->isInsideGameField(nearestPoint.Location.toPosition())){
-                        setTargetPoint(nearestPoint);
-                    }else{
-                        cout << "TargetPoint not in GameField! Drive to ball psotion!" << endl;
-                        stopBallSM.changeState(STOPBALL_STATES::BLOCK_BALL);
-                    }
-                }else{
-                    stopBallSM.changeState(STOPBALL_STATES::BLOCK_BALL);
-                }
-            break;
-        case STOPBALL_STATES::BLOCK_BALL :
-            if(position_.getDistance(physics_->getBall()->GetPos()) > 0.05){
-                setTargetPoint(TargetPoint(physics_->getBall()->GetPos(), 0.05));
-                if(position_.getDistance(physics_->getBall()->GetPos()) < 0.15){
-                    setDesiredSpeed(0.1);
-                }
-            }else{
-                stopBallSM.changeState(STOPBALL_STATES::END);
-            }    
-            break;
-        case STOPBALL_STATES::END :
-            break;
-    SUBSM_EXIT(stopBallSM)
-            case STOPBALL_STATES::END :
-                deleteTargetPoints();
-                break;
-    SUBSM_ENTRY(stopBallSM)
-            case STOPBALL_STATES::INIT  :
-                deleteTargetPoints();
-                activate();
-                setDesiredSpeed(1);
-                cout << "STOPBALL: Roboter stopped!" << endl;
-                break;
-            case STOPBALL_STATES::NOT_MOVING_BALL  :
-                if(ourSide_ == RIGHT_SIDE){
-                    setTargetPoint( Vector2d(physics_->getBall()->GetPos().GetX(), physics_->getBall()->GetPos().GetY()+0.20 ));
-                    addTargetPoint( Vector2d(physics_->getBall()->GetPos().GetX()+0.15, physics_->getBall()->GetPos().GetY() ));
-                }else{
-                    setTargetPoint( Vector2d(physics_->getBall()->GetPos().GetX(), physics_->getBall()->GetPos().GetY()+0.20 ));
-                    addTargetPoint( Vector2d(physics_->getBall()->GetPos().GetX()-0.15, physics_->getBall()->GetPos().GetY() ));
-                }
-                cout << "STOPBALL: Ball is not moving, cruise to ball!" << endl;
-                break;
-            case STOPBALL_STATES::OVERTAKE_BALL :
-                cout << "STOPBALL: Roboter is behind the ball!" << endl;
-                break;
-            case STOPBALL_STATES::BEFORE_BALL :
-                cout << "STOPBALL: Roboter is before ball cruise to ball trajectory!" << endl;
-                break;
-            case STOPBALL_STATES::BLOCK_BALL :
-                cout << "STOPBALL: Stopping Ball!" << endl;
-                break;
-            case STOPBALL_STATES::END :
-                cout << "STOPBALL: Ball stoped!" << endl;
-                break;
-    SUBSM_END(stopBallSM)
-}
 
 void Agent::stopAllActions()
 {
     attackerModeActive_ = false;
-    supportGkActive_ = false;
+    defenderModeActive_ = false;
     shootBallActive_ = false;
-    clearBallActive_ = false;
-    stopBallActive_ = false;
-    passToActive_ = false;
-}
-
-void Agent::startClearBall()
-{
-    stopAllActions();
-    clearBallSM.changeState(CLEARBALL_STATES::INIT);
-    clearBallActive_ = true;
-}
-
-void Agent::clearBall()
-{
-    SUBSM_DURING(clearBallSM)
-        case CLEARBALL_STATES::INIT  :
-			if( isBehindBall(0.2) ){
-                clearBallSM.changeState(CLEARBALL_STATES::CLEAR);
-            }else{
-                clearBallSM.changeState(CLEARBALL_STATES::STOP_BALL);
-            }
-            break;
-        case CLEARBALL_STATES::STOP_BALL :
-		if(isBehindBall(0.15) || (isBehindBall(0) && physics_->getBallVelocity().getLength() < 0.1)){
-				clearBallSM.changeState(CLEARBALL_STATES::CLEAR);
-			}else{
-			TargetPoint behindBall = TargetPoint(Line(physics_->getBallPositionFiltered(), ownGoalSegment_->getMiddlePoint()).getDirectionVector().getNormalized()*0.1);
-				setTargetPoint(behindBall);
-			}
-
-
-//			double OvertakeY, OvertakeX;
-
-
-//			if(physics_->getSimpleBallTrajectory().isLeftOfLine(position_.toPosition())){
-//				OvertakeY = physics_->getBallLastPosition().GetY()-0.25;
-//			}else{
-//				OvertakeY = physics_->getBallLastPosition().GetY()+0.25;
-//			}
-
-//			if(ourSide_ == RIGHT_SIDE){
-//				OvertakeX =  physics_->getBallLastPosition().GetX()+0.30;
-//			}else{
-//				OvertakeX =  physics_->getBallLastPosition().GetX()-0.30;
-//			}
-
-//			if(physics_->isInsideGameField(  Vector2d(OvertakeX, OvertakeY).toPosition()  ) ){
-//				setTargetPoint(TargetPoint( Vector2d(OvertakeX, OvertakeY) , 0.05, true));
-//			}else{
-//				setTargetPoint(TargetPoint( physics_->getPredBallPosition(500) , 0.05, true));
-//			}
-//			if(isBehindBall(0.2)){
-//				clearBallSM.changeState(CLEARBALL_STATES::CLEAR);
-//			}
-            break;
-        case CLEARBALL_STATES::CLEAR :
-			if(isBehindBall(0)){
-				if(position_.getDistance(physics_->getBall()->GetPos()) > 0.20){
-					setDesiredSpeed(0.6);
-				}else{
-					setDesiredSpeed(1.5);
-				}
-				TargetPoint aim = TargetPoint(physics_->getBall()->GetPos(), 0.05,  false);
-				avoidPenaltyZone(&aim);
-				setTargetPoint(aim);
-            }else{
-                clearBallSM.changeState(CLEARBALL_STATES::INIT);
-            }
-            break;
-        case CLEARBALL_STATES::END :
-            clearBallSM.changeState(CLEARBALL_STATES::INIT);
-        break;
-
-    SUBSM_EXIT(clearBallSM)
-		case CLEARBALL_STATES::STOP_BALL :
-			deactivateCA();
-		case CLEARBALL_STATES::END :
-            deleteTargetPoints();
-            break;
-    SUBSM_ENTRY(clearBallSM)
-            case CLEARBALL_STATES::INIT  :
-                deleteTargetPoints();
-				setDesiredSpeed(1.0);
-				cout << "CLEARBALL: INIT!" << endl;
-                break;
-            case CLEARBALL_STATES::STOP_BALL :
-				activateCA(false, false, true, true, true, true);
-                break;
-            case CLEARBALL_STATES::CLEAR :
-                break;
-            case CLEARBALL_STATES::END :
-                break;
-    SUBSM_END(clearBallSM)
+	kickOffActive_ = false;
+	penaltyModeActive_ = false;
 }
 
 bool Agent::isBehindBall(double val){
@@ -530,48 +347,17 @@ bool Agent::isBehindBall(double val){
 	}
 }
 
-bool Agent::isGoodBehindBall(){
-    Vector2d ballPos = Vector2d(physics_->getBall()->GetPos());
-    Vector2d target = enemyGoalSegment_->getMiddleVector();
-    LineSegment goalBall(ballPos, target);
-    Vector2d normVec = goalBall.getNormalVector().getNormalized();
-    Vector2d dirVec = goalBall.getDirectionVector().getNormalized();
-    Vector2d p2 = Vector2d(ballPos - dirVec * 0.6);
-    Vector2d p3 = Vector2d(ballPos - dirVec * 0.6 + normVec * 0.3);
-    Vector2d p1 = Vector2d(ballPos - dirVec * 0.6 - normVec * 0.3);
-
-    return Quadrangle(ballPos.toPosition(),p1.toPosition(),p2.toPosition(),p3.toPosition()).isInside(position_.toPosition());
-}
-
-
-Line Agent::getBallGoalLine(){
-    return Line(physics_->getBall()->GetPos(), enemyGoalSegment_->getMiddlePoint());
-}
-
 void Agent::avoidPenaltyZone(TargetPoint* target){
     if (enemyPenaltyZone_->isInside(target->Location.toPosition()))
     {
         //cout << "ball is in enemyPenaltyZone, getValidPosition" << endl;
-        target->Location = enemyPenaltyZone_->getValidPosition(GetPos());
+        target->Location = enemyPenaltyZone_->getValidPosition(target->Location.toPosition());
     }
     if (ownPenaltyZone_->isInside(target->Location.toPosition()))
     {
         //cout << "ball is in enemyPenaltyZone, getValidPosition" << endl;
-        target->Location = ownPenaltyZone_->getValidPosition(GetPos());
+        target->Location = ownPenaltyZone_->getValidPosition(target->Location.toPosition());
     }
-}
-
-double Agent::timeToBall(){
-    double t = 0;
-    if (robotSpeed_ != 0)
-    {
-    t = (position_.getDistance(physics_->getBall()->GetPos()) / robotSpeed_) * 1000;
-    }
-    if ( t > 3000)
-    {
-        t = 3000;
-    }
-    return t;
 }
 
 void Agent::startShootBall(){
@@ -581,7 +367,7 @@ void Agent::startShootBall(){
 
 void Agent::shootBall(){
 
-    double offsetX = 0.25;
+    double offsetX = 0.2;
     double offsetY = 0.2;
     TargetPoint aim;
 
@@ -611,7 +397,7 @@ void Agent::shootBall(){
                 }
            break;
            case SHOOTBALL_STATES::GET_BEHIND_BALL :
-                if (!isBehindBall(0.2))
+                if (!isBehindBall(0.15))
                 {
                     Position predBallPos = physics_->getPredBallPosition(3000);
                     aim = TargetPoint(Vector2d(predBallPos.GetX()+offsetX,predBallPos.GetY()),0.01,false);
@@ -639,8 +425,8 @@ void Agent::shootBall(){
                     }
                     avoidPenaltyZone(&aim);
                     setTargetPoint(aim);
-
-                    if (position_.getDistance(aim.Location) < 0.05 && predTime <= shotDuration)
+                    //cout << "PredTime: " << predTime  <<"  --- distance: " << position_.getDistance(aim.Location) << endl;
+                    if ((position_.getDistance(aim.Location) < 0.08) && (predTime <= shotDuration))
                     {
                         shootBallSM.changeState(SHOOTBALL_STATES::SHOOT_BALL);
                     }
@@ -672,22 +458,24 @@ void Agent::shootBall(){
     SUBSM_EXIT(shootBallSM)
     SUBSM_ENTRY(shootBallSM)
                case SHOOTBALL_STATES::INIT :
-                   setDesiredSpeed(0.8);
+                   setDesiredSpeed(0.9);
                    cout << "start shoot sequence" << endl;
                    break;
                case SHOOTBALL_STATES::GET_BEHIND_BALL :
+                   setDesiredSpeed(1);
                    cout << "Roboter gets behind ball" << endl;
                    // ( enemies, agents, ownPenaltyZone, enemyPenaltyZone, ballObst, gameField)
                    activateCA(true, true, true, true, true, true);
                    break;
                case SHOOTBALL_STATES::GET_ON_BALL_GOAL_LINE :
+                   setDesiredSpeed(0.8);
                    cout << "Roboter gets on Ball Goal Line" << endl;
                    activateCA(false, false, true, true, false, false);
                    predTime = 3000;
                    break;
                case SHOOTBALL_STATES::SHOOT_BALL :
                    cout << "Roboter shoots Ball"<< endl;
-                   setDesiredSpeed(1.2);
+                   setDesiredSpeed(1.4);
                    shootTimer = shotDuration;
                    activateCA(false, false, true, true, false, false);
                    break;
@@ -701,142 +489,13 @@ Line Agent::getBallTargetLine(Position target){
     return Line(physics_->getPredBallPosition(300),target);
 }
 
-void Agent::startPassTo(Agent *agent){
-    passToAgent_ = agent;
-}
-
-void Agent::passTo()
-{
-    TargetPoint aim;
-    Position agent;
-
-    double offsetX = 0.20;
-    double offsetY = 0.10;
-    if (ourSide_ == LEFT_SIDE)
-    {
-        offsetX *= -1;
-    }
-    if (leftSide_->isInside(physics_->getBallLastPosition()))
-    {
-        offsetY *= -1;
-    }
-
-    SUBSM_DURING(passToSM)
-            case PASSTO_STATES::INIT :
-                if (isBehindBall())
-                {
-                    passToSM.changeState(PASSTO_STATES::GET_ON_BALL_TARGET_LINE);
-                }
-                else{
-                    passToSM.changeState(PASSTO_STATES::GET_BEHIND_BALL);
-                }
-            break;
-            case PASSTO_STATES::GET_BEHIND_BALL :
-                if (!isBehindBall(0.15))
-                {
-                    Position predBallPos = physics_->getPredBallPosition(200);
-                    aim = TargetPoint(Vector2d(predBallPos.GetX()+offsetX,predBallPos.GetY()),0.01,false);
-
-                    setTargetPoint(aim);
-                }
-                else
-                {
-                    shootBallSM.changeState(PASSTO_STATES::GET_ON_BALL_TARGET_LINE);
-                }
-            break;
-            case PASSTO_STATES::GET_ON_BALL_TARGET_LINE :
-               agent = passToAgent_->GetPos();
-               agent = Position(agent.GetX()+offsetX,agent.GetY());
-               cout << "agent pos: " << agent << endl;
-               aim = calcShootPosition(physics_->getPredBallPosition(100),agent, 0.15,true);
-               setTargetPoint(aim);
-
-               if (position_.getDistance(aim.Location) < 0.05 )
-               {
-                   passToSM.changeState(PASSTO_STATES::PASS_BALL);
-               }
-            break;
-            case PASSTO_STATES::PASS_BALL :
-                if (isBehindBall())
-                {
-                    aim = TargetPoint(physics_->getPredBallPosition(100),0.01,false);
-                    setTargetPoint(aim);
-                }
-                else
-                {
-                   passToSM.changeState(PASSTO_STATES::INIT);
-                }
-            break;
-
-    SUBSM_EXIT(passToSM)
-    SUBSM_ENTRY(passToSM)
-            case PASSTO_STATES::INIT :
-                setDesiredSpeed(0.7);
-                // ( enemies, agents, ownPenaltyZone, enemyPenaltyZone, ballObst, gameField)
-                cout << "start pass sequence" << endl;
-                break;
-            case PASSTO_STATES::GET_BEHIND_BALL :
-                cout << "Roboter gets behind ball" << endl;
-                // ( enemies, agents, ownPenaltyZone, enemyPenaltyZone, ballObst, gameField)
-                //activateCA(true, true, true, true, true, true);
-                break;
-            case PASSTO_STATES::GET_ON_BALL_TARGET_LINE :
-                // activateCA(true, true, true, true, false, true);
-                 cout << "Roboter gets on Ball Target Line" << endl;
-                break;
-            case PASSTO_STATES::PASS_BALL :
-                setDesiredSpeed(1.2);
-                // activateCA(false,false,true,true,false,false);
-                cout << "Roboter passes Ball"<< endl;
-                break;
-
-    SUBSM_END(passToSM)
-}
-
-
-Vector2d Agent::calcRelativePosition(double x, double distance_left_or_right, eSide left_or_right)
-{
-    if (ourSide_ == LEFT_SIDE)
-    {
-        if (left_or_right == LEFT_SIDE)
-        {
-            return Vector2d(x,-distance_left_or_right);
-        }
-        else
-        {
-            return Vector2d(x,distance_left_or_right);
-        }
-    }
-    else
-    {
-        if (left_or_right == LEFT_SIDE)
-        {
-            return Vector2d(x,distance_left_or_right);
-        }
-        else
-        {
-            return Vector2d(x,-distance_left_or_right);
-        }
-    }
-}
-
-
-
-LineSegment Agent::calcPositionBeforeBall(Position ball, Position target, double distToBall)
-{
-    LineSegment seg(ball,target);
-    //result.angle = Angle(seg.getDirectionVector().getAngle());
-    LineSegment result = LineSegment(seg.getStartVector() - seg.getDirectionVector() * distToBall, target);
-    return result;
-}
-
 TargetPoint Agent::calcShootPosition(Position ball, Position target, double distToBall, bool brake)
 {
     LineSegment seg(ball,target);
     //result.angle = Angle(seg.getDirectionVector().getAngle());
     LineSegment result = LineSegment(seg.getStartVector() - seg.getDirectionVector() * distToBall, target);
 
-    TargetPoint targetPoint(result.getStartVector(), result.getDirectionVector(), 0.08, brake);
+    TargetPoint targetPoint(result.getStartVector(), result.getDirectionVector(), 0.05, brake);
     return targetPoint;
 }
 
@@ -846,9 +505,9 @@ void Agent::shoot()
     bool kickBackwards = fabs(angle) > M_PI_2;
     noWarning_ = true;
     if (kickBackwards)
-        MoveMsBlocking(-255,-255,300,100);
+        MoveMsBlocking(-255,-255,800,0);
     else
-        MoveMsBlocking(255,255,300,100);
+        MoveMsBlocking(255,255,800,0);
 }
 
 void Agent::activateCA(bool enemies, bool agents, bool ownPenaltyZone, bool enemyPenaltyZone, bool ballObst, bool gameField)

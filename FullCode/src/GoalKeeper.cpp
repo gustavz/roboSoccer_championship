@@ -19,6 +19,8 @@ void GoalKeeper::setSide(eSide s)
     const double distToPost = 0.15;
 
     ourSide_ = s;
+	leftSide_ = physics_->getLowerHalfPtr();
+	rightSide_ = physics_->getUpperHalfPtr();
 
     if (s == LEFT_SIDE)
     {
@@ -27,6 +29,8 @@ void GoalKeeper::setSide(eSide s)
         enemyGoalSegment_ = physics_->getGoalRightPtr();
         ownPenaltyZone_ = physics_->getObstaclePenaltyAreaLeftPtr();
         enemyPenaltyZone_ = physics_->getObstaclePenaltyAreaRightPtr();
+		ownFieldHalf_ = physics_->getLeftHalfPtr();
+		enemyFieldHalf_ = physics_->getRightHalfPtr();
     }
     else
     {
@@ -35,6 +39,8 @@ void GoalKeeper::setSide(eSide s)
         enemyGoalSegment_ = physics_->getGoalLeftPtr();
         ownPenaltyZone_ = physics_->getObstaclePenaltyAreaRightPtr();
         enemyPenaltyZone_ = physics_->getObstaclePenaltyAreaLeftPtr();
+		ownFieldHalf_ = physics_->getRightHalfPtr();
+		enemyFieldHalf_ = physics_->getLeftHalfPtr();
     }
 
     Vector2d leftEdge = ownGoalSegment_->getSupportVector()
@@ -95,6 +101,17 @@ void GoalKeeper::run()
                 }
                 gkKick();
                 break;
+			case GOALKEEPER_STATES::PENALTY :
+
+				if(physics_->getBallVelocity().getLength() > 0.1)
+				{
+					deleteTargetPoints();
+					changeState(GOALKEEPER_STATES::AUTO_HOLD_NOT_ACTIVE);
+					std::cout << "PENALTY DONE" << std::endl;
+					break;
+				}
+				shootBall();
+				break;
         SM_EXIT
         SM_ENTRY
             case GOALKEEPER_STATES::AUTO_HOLD_NOT_ACTIVE:
@@ -111,6 +128,10 @@ void GoalKeeper::run()
                 std::cout << "Goaly clear ball started" << std::endl;
                 gkKickSM.changeState(GOALKEEPER_KICK_STATES::PREPARE);
                 break;
+			case GOALKEEPER_STATES::PENALTY :
+					shootBallSM.changeState(SHOOTBALL_STATES::INIT);
+					std::cout << "GK Start Penalty" << std::endl;
+				break;
         SM_END
 
         if (active_)
@@ -122,6 +143,12 @@ void GoalKeeper::run()
     }
 }
 
+void GoalKeeper::startPenaltyMode(){
+	stopAllActions();
+	stopGoalKeeper();
+	penaltyModeActive_ = true;
+	changeState(GOALKEEPER_STATES::PENALTY);
+}
 
 void GoalKeeper::startGoalKeeper()
 {

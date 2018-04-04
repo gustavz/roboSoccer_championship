@@ -18,8 +18,6 @@ void Debug::run()
         std::cin >> message;
         if (message == "x")
         {
-
-            gameControl_->penaltySM.currentState_ = PENALTY_STATES::INIT;
             gameControl_->gk_->AbortGotoXY();
             gameControl_->fp1_->AbortGotoXY();
             gameControl_->fp2_->AbortGotoXY();

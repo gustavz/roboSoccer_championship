@@ -26,8 +26,9 @@ Physics::Physics()
           //HalfwayLine
           LineSegment(Position(0.016, 0.869), Position(-0.001, -0.880)),
           // PenaltyAreaLeft
-          Quadrangle(Position(-1.386, 0.364), Position(-1.173, 0.363),
-                     Position(-1.196, -0.33), Position(-1.412, -0.319)),
+		  Quadrangle(Position(-1.386, 0.364), Position(-1.173, 0.363),
+					 Position(-1.196, -0.33), Position(-1.412, -0.319)),
+
           // PenaltyAreaRight
           Quadrangle(Position(1.196, 0.346), Position(1.415, 0.343),
                      Position(1.43, -0.357), Position(1.204, -0.35)),
@@ -103,7 +104,6 @@ Physics::Physics()
     gameField_.RightHalf.setName("RightHalf");
     gameField_.UpperHalf.setName("UpperHalf");
     gameField_.LowerHalf.setName("LowerHalf");
-    velTimer_.start();
 }
 
 Physics::Physics(Ball* ball)
@@ -158,9 +158,8 @@ void Physics::run()
     {
         restartTimer();
         updatePhysics();
-        updateObstacles();
-        PredictBallTrajectory(1000);
-        usleep(getSleepTime());
+		updateObstacles();
+		usleep(getSleepTime());
     }
 }
 
@@ -177,7 +176,7 @@ void Physics::updatePhysics()
 
 	Vector2d ballPos(ball_->GetPos());
 	if(!isInsideGameField(ballPos.toPosition())){
-		cout << "Ball is not inside GameField!!!" << endl;
+                //cout << "Ball is not inside GameField!!!" << endl;
 		ballPos = ballPositionFiltered_;
 	}
 
@@ -240,13 +239,6 @@ void Physics::updatePhysics()
 
 }
 
-void Physics::PredictBallTrajectory(int milliseconds)
-{
-    //Calculate simpleBallTrajectory_
-    simpleBallTrajectory_.setSupportVector(lastBallPosition_);
-    simpleBallTrajectory_.setDirectionVector(ballVelocity_.getNormalized());
-}
-
 Position Physics::getPredBallPosition(int milliseconds) const
 {
 //    Position temp = (simpleBallTrajectory_.getSupportVector() + (simpleBallTrajectory_.getDirectionVector() * ballVelocity_.getLength() * milliseconds / 1000)).toPosition();
@@ -267,11 +259,6 @@ Vector2d Physics::getPredBallVelocity(int milliseconds) const
 Vector2d Physics::getBallVelocity() const
 {
     return ballVelocity_;
-}
-
-Line Physics::getSimpleBallTrajectory() const
-{
-    return simpleBallTrajectory_;
 }
 
 std::vector<LineSegment> Physics::getBallTrajectory(int milliseconds) const

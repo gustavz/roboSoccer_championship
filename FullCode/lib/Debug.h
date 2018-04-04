@@ -41,6 +41,9 @@ public:
 private:
   GameControl* gameControl_;
 
+  /**
+	*@brief Update the overwritten referee
+	*/
   void updateRef(std::string message);
 
 };

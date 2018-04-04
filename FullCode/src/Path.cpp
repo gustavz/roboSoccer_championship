@@ -36,46 +36,12 @@ void Path::compute(TargetPoint requestedEnd)
     Position end = requestedEnd.Location.toPosition();
     //cout << "[CA] Requested end given to CA: " << end << endl;
 
-    // Check if cached waypoints are still viable
-//    if (cachedCAtargetPoints_.size() > 1 && p < 0.2)
-//    {
-//        bool viable = true;
-//        Vector2d cachedStart = cachedCAtargetPoints_.front().Location;
-//        Vector2d cachedEnd = cachedCAtargetPoints_.back().Location;
-//        if (cachedStart.getDistance(start) < 0.03 && cachedEnd.getDistance(end) < 0.03)
-//        {
-//            cachedCAtargetPoints_.erase(CAtargetPoints_.begin());
-//            for (auto k : cachedCAtargetPoints_)
-//            {
-//                for (auto i : obstacles_)
-//                {
-//                    if (i->isInside(k.Location.toPosition()))
-//                    {
-//                        viable = false;
-//                        break;
-//                    }
-//                }
-//            }
-//        }
-//        if (viable)
-//        {
-//            cout << "Viable" << endl;
-//            cachedCAtargetPoints_.insert(cachedCAtargetPoints_.begin(), TargetPoint(position_));
-//            CAtargetPoints_ = cachedCAtargetPoints_;
-//            return;
-//        }
-//    }
-
-
     // Check for invalid start/end positions
-    // TODO: Better handling for finding way out of obstacle
-    // TODO: Calculate better substitute positions
     for (auto i : obstacles_)
     {
         //cout << "Obstacle: " << *i << endl;
         if (i->isInside(end))
         {
-            //cout << "End inside obstacle" << endl;
             end = i->getValidPosition(end);
             break;
         }
@@ -147,8 +113,7 @@ void Path::compute(TargetPoint requestedEnd)
         const Node *extendedNode = extend(nearestNode, target);
         if (extendedNode == NULL) {
             stepSize_ += stepSize_*0.05;
-            //cout << "stepSize " << stepSize_ << endl;
-            //cout << "Extend returned NULL" << endl;
+            //cout << "[CA] Extend returned NULL -> stepSize " << stepSize_ << endl;
             continue;
         }
         stepSize_ = resetStepSize;
@@ -185,14 +150,6 @@ void Path::compute(TargetPoint requestedEnd)
     }
     // Final cleanup
     simplify();
-
-//    for (auto i : CAtargetPoints_)
-//    {
-//        cout << "CAtargetPoint: " << i.Location << endl;
-//    }
-
-    //cachedCAtargetPoints_ = CAtargetPoints_;
-
 }
 
 
@@ -358,127 +315,3 @@ bool Path::intersectsObstacle(const LineSegment& seg, int idx) const
     return false;
 }
 
-
-vector<Position> Path::computeLegacy(Position start, Position end)
-{
-    Position initStart(start);
-    Position initEnd(end);
-
-    vector<Position> path;
-
-    // Check for invalid start/end positions
-    for (auto i : obstacles_)
-    {
-        if (i->isInside(start))
-        {
-            start = i->getValidPosition(start);
-            break;
-        }
-        if (i->isInside(end))
-        {
-            end = i->getValidPosition(end);
-            cout << "New Target is inside " << *i << endl;
-            break;
-        }
-    }
-
-    // Check for end position outside field
-    if (!field_->isInside(end))
-    {
-        LineSegment toCenter(end, field_->getCenter());
-        Position overwrite = field_->getIntersection(toCenter).front().toPosition();
-        end = overwrite;
-    }
-    // Check for end position inside corners
-    for (auto i : corners_)
-    {
-        if (i->isInside(end))
-        {
-            LineSegment toCenter(end, field_->getCenter());
-            Position overwrite = i->getIntersection(toCenter).front().toPosition();
-            end = overwrite;
-            break;
-        }
-    }
-
-    if (initStart!=start)
-    {
-        cout << "Invalid start position" << endl;
-        path.push_back(start);
-        return path;
-    }
-    if (initEnd!=end)
-        cout << "Invalid end position" << endl;
-
-    LineSegment goalSeg(start, end);
-
-    // Check if direct path is free
-    if (!intersectsObstacle(goalSeg))
-    {
-        path.push_back(goalSeg.getEndPoint());
-        return path;
-    }
-
-    LineSegment closestPath = goalSeg;
-    double closestAngle = 2 * M_PI;
-
-    int k = 0;
-    for (auto i : obstacles_)
-    {
-        // Compute tangents for each obstacle
-        std::vector<Vector2d> tangents = i->getTangentPoints(start);
-
-        cout << "Tangents size: " << tangents.size() << endl;
-
-        if (dynamic_cast<Quadrangle*>(i))
-        {
-            for (auto j : tangents)
-            {
-                LineSegment seg(start, j.toPosition());
-
-                double angle = fabs(goalSeg.getAngle(seg));
-                cout << "j: " << j << endl;
-                cout << "angle: " << angle << "  closest: " << closestAngle << endl;
-                bool test1 = angle < closestAngle;
-                bool test2 = !intersectsObstacle(seg, k);
-                bool test3 = i->intersects(goalSeg);
-                bool test4 = field_->isInside(j.toPosition());
-                cout << "bools: " << test1 << "  " << test2 << "  " << test3 << test4 << endl;
-
-                if (angle < closestAngle && !intersectsObstacle(seg, k) && i->intersects(goalSeg) && field_->isInside(j.toPosition()))
-                {
-                        closestAngle = angle;
-                        closestPath = seg;
-                }
-            }
-        } else {
-                LineSegment seg(start, tangents.front().toPosition());
-                double angle = fabs(goalSeg.getAngle(seg));
-                if (angle < closestAngle && !intersectsObstacle(seg))
-                {
-                   closestAngle = angle;
-                   closestPath = seg;
-                 }
-                 seg = LineSegment(start, tangents.back().toPosition());
-                 angle = fabs(goalSeg.getAngle(seg));
-                 if (angle < closestAngle && !intersectsObstacle(seg))
-                   {
-                      closestAngle = angle;
-                      closestPath = seg;
-                   }
-        }
-
-
-
-        k++;
-    }
-    cout << "New Path found -> " << closestPath.getEndVector() << endl;
-    // double lengthMoveOn = 0.05;
-    // Vector2d endPos(closestPath.getEndPoint());
-    // endPos = endPos + closestPath.getDirectionVector()*lengthMoveOn;
-    // Return tangent path with closest angle to goal position
-
-    path.push_back(closestPath.getEndPoint());
-
-    return path;
-}

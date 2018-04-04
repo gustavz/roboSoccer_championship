@@ -17,6 +17,7 @@ Node* KdTree::insert(const Vector2d &position, bool inObstacle, const Node *prev
     Node *parent = NULL;
     Node **next = &root_;
 
+    // Find parents
     unsigned int axis;
     do {
         axis = (*next)->axis();
@@ -24,6 +25,7 @@ Node* KdTree::insert(const Vector2d &position, bool inObstacle, const Node *prev
         next = parent->nearestChildPointer(position);
     } while (*next);
 
+    // Insert new node
     *next = new Node(position, inObstacle, previous, axis ^ 1, parent);
     nodeCount_++;
 
@@ -46,6 +48,7 @@ Node* KdTree::nearest(const Vector2d &position, Node *root, double &bestDist, do
 
     Node *currentNode = NULL;
 
+    // Find nearest node naively
     {
         Node *node = root;
         do {
@@ -54,6 +57,7 @@ Node* KdTree::nearest(const Vector2d &position, Node *root, double &bestDist, do
         } while (node);
     }
 
+    // Find actual nearest recursively
     do {
         const double dist = (currentNode->position() - position).getLengthSquared();
         if (dist < bestDistSquared) {

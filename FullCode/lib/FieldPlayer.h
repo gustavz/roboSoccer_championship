@@ -39,6 +39,7 @@ namespace KICKOFF_STATES
 enum ClearBallStates
 {
     PREPARE,
+    PREPARE_KICKOFF,
     SHOOT
 };
 }
@@ -72,9 +73,6 @@ public:
      */
     void setSide(eSide s);
 
-
-
-
     /**
      *@brief starts attacker mode
      */
@@ -101,6 +99,11 @@ public:
      */
     void setAttacker(FieldPlayer* fp){attacker_ = fp; defender_ = NULL;}
 
+    /**
+     *@brief set a target point for kickoff preparation
+     */
+    void setKickoffPreparationTarget(TargetPoint tp){setTargetPoint(tp);}
+
 
 private:
     FieldPlayer* defender_; /**< pointer to defender if exists*/
@@ -111,7 +114,7 @@ private:
 
     /**
      *@brief calculate the defenseLine for gk support
-     */
+	 */
     void startSupportGk(double distToHalfLine);
 
     /**
@@ -119,43 +122,32 @@ private:
      */
     void supportGk();
 
-    //====Block Enemy=====//
-    Enemy* enemyToBlock_;
-    double blockingDistToBall_;
-
-    /**
-     *@brief check weather it is possible to block an enemy and initialize values for blocking
-     */
-    bool startBlockEnemy();
-
-    /**
-     *@brief blockes the enemy from ball, allowing others to clear the ball
-     */
-    void blockEnemy();
-
-
-
-    //====Anticiapte====//
-    void anticipatePass();
-    void prepareShoot();
 
     //====AttackerMode====//
-    StateMachine attackerModeSM;
+	StateMachine attackerModeSM; /**< statemachine for the attacker mode*/
+	/**
+	  *@brief Run the attackerModeSM
+	  */
     void attackerMode();
 
     //====DefenderMode====//
-    StateMachine defenderModeSM;
-    void defenderMode();
-    DefenderRole defenderRole_;
+	StateMachine defenderModeSM; /**< statemachine for the defender mode*/
+	/**
+	  *@brief Run the defenderModeSM
+	  */
+	void defenderMode();
+	DefenderRole defenderRole_; /**< role of defender*/
 
     //====kickOff====//
-    StateMachine kickOffSM;
+	StateMachine kickOffSM; /**< statemachine for the kickoff */
+	/**
+	  *@brief Run the kickOffSM
+	  */
     void kickOff();
+	/**
+	  *@brief Calculate the position to shoot
+	  */
     void calcKickOffPreparePosition();
-
-
-
-
 
 
 };

@@ -12,7 +12,8 @@ namespace GOALKEEPER_STATES
     {
         AUTO_HOLD_NOT_ACTIVE,
         AUTO_HOLD_ACTIVE,
-        CLEAR_BALL
+		CLEAR_BALL,
+		PENALTY
     };
 }
 
@@ -46,6 +47,11 @@ public:
      *@param s: side of our goal
      */
     void setSide(eSide s);
+
+	/**
+	 *@brief starts penaly mode
+	 */
+	void startPenaltyMode();
 
     /**
      *@brief starts goalkeeper
@@ -123,10 +129,10 @@ private:
 
     const int anticipationTime_ = 5000; /**< Time in ms how far to predict the ball trajectory*/
 
-    LineSegment* ownInnerGoal_;
+	LineSegment* ownInnerGoal_;/**< pointer to own inner goal segment*/
 
     StateMachine gkKickSM; /**< StateMachine for the Goalkeeper kick */
-    Vector2d lastBallPosBeforeKick_; /**< Last measured ball position before gk kick */
+	Vector2d lastBallPosBeforeKick_; /**< Last measured ball position before gk kick */
 
 
 };
